@@ -1,0 +1,81 @@
+#include <ESP8266WiFi.h>
+#include <DHT.h>
+#include <ThingSpeak.h>
+
+// Wi-Fi credentials
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+
+// ThingSpeak API Settings
+const char* apiKey = "YOUR_THINGSPEAK_API_KEY";
+const long channelID = YOUR_CHANNEL_ID;
+
+WiFiClient client;
+
+// DHT11 Sensor Setup
+#define DHTPIN D2
+#define DHTTYPE DHT11
+DHT dht(DHTPIN, DHTTYPE);
+
+// Soil Moisture Sensor
+#define SOIL_MOISTURE_PIN A0
+
+// Relay Module Pin (for water pump)
+#define RELAY_PIN D1
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+  pinMode(RELAY_PIN, OUTPUT);
+  digitalWrite(RELAY_PIN, HIGH); // initially pump OFF
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected to WiFi");
+
+  ThingSpeak.begin(client);
+}
+
+void loop() {
+  // Reading from sensors
+  float temperature = dht.readTemperature();
+  float humidity = dht.readHumidity();
+  int soilMoistureValue = analogRead(SOIL_MOISTURE_PIN);
+  
+  // Normalize Soil Moisture to 0–100% (Optional)
+  int soilMoisturePercent = map(soilMoistureValue, 1023, 0, 0, 100);
+  
+  Serial.println("==== Sensor Readings ====");
+  Serial.print("Temperature: "); Serial.println(temperature);
+  Serial.print("Humidity: "); Serial.println(humidity);
+  Serial.print("Soil Moisture (%): "); Serial.println(soilMoisturePercent);
+
+  // Upload to ThingSpeak
+  ThingSpeak.setField(1, temperature);
+  ThingSpeak.setField(2, humidity);
+  ThingSpeak.setField(3, soilMoisturePercent);
+
+  int response = ThingSpeak.writeFields(channelID, apiKey);
+  if (response == 200) {
+    Serial.println("Data sent to ThingSpeak.");
+  } else {
+    Serial.print("Error sending data. HTTP code: "); Serial.println(response);
+  }
+
+  // Control Relay (Pump) based on Soil Moisture Threshold
+  if (soilMoisturePercent < 40) {
+    digitalWrite(RELAY_PIN, LOW);  // Turn ON pump
+    Serial.println("Soil is dry. Pump ON.");
+  } else {
+    digitalWrite(RELAY_PIN, HIGH); // Turn OFF pump
+    Serial.println("Soil is wet. Pump OFF.");
+  }
+
+  Serial.println("=========================");
+  delay(15000); // 15 seconds delay (ThingSpeak recommends 15+ sec interval)
+}
+

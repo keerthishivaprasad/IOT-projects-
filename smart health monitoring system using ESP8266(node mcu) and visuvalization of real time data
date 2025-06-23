@@ -1,0 +1,87 @@
+#include <ESP8266WiFi.h>
+#include <Wire.h>
+#include "MAX30100_PulseOximeter.h"
+#include <DHT.h>
+#include "ThingSpeak.h"
+
+#define DHTPIN D2          // Pin where the DHT11 is connected
+#define DHTTYPE DHT11      // DHT 11
+
+#define REPORTING_PERIOD_MS 1000
+
+DHT dht(DHTPIN, DHTTYPE);
+PulseOximeter pox;
+
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+
+// ThingSpeak
+const char* thingSpeakApiKey = "YOUR_API_KEY";
+const long channelNumber = YOUR_CHANNEL_NUMBER;
+
+WiFiClient client;
+
+uint32_t tsLastReport = 0;
+
+float heartRate = 0;
+float spo2 = 0;
+
+void onBeatDetected() {
+  Serial.println("Beat Detected!");
+}
+
+void setup() {
+  Serial.begin(115200);
+  dht.begin();
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected to WiFi");
+
+  ThingSpeak.begin(client);
+
+  if (!pox.begin()) {
+    Serial.println("FAILED to initialize MAX30100");
+    while (1);
+  } else {
+    Serial.println("MAX30100 initialized");
+  }
+
+  pox.setOnBeatDetectedCallback(onBeatDetected);
+}
+
+void loop() {
+  pox.update();
+
+  float temp = dht.readTemperature();
+  float humidity = dht.readHumidity();
+
+  if (millis() - tsLastReport > REPORTING_PERIOD_MS) {
+    tsLastReport = millis();
+
+    heartRate = pox.getHeartRate();
+    spo2 = pox.getSpO2();
+
+    Serial.println("Sending data to ThingSpeak...");
+    Serial.print("Heart Rate: "); Serial.println(heartRate);
+    Serial.print("SpO2: "); Serial.println(spo2);
+    Serial.print("Temperature: "); Serial.println(temp);
+    Serial.print("Humidity: "); Serial.println(humidity);
+
+    ThingSpeak.setField(1, heartRate);
+    ThingSpeak.setField(2, spo2);
+    ThingSpeak.setField(3, temp);
+    ThingSpeak.setField(4, humidity);
+
+    int status = ThingSpeak.writeFields(channelNumber, thingSpeakApiKey);
+    if (status == 200) {
+      Serial.println("Data sent successfully.");
+    } else {
+      Serial.print("Error sending data: "); Serial.println(status);
+    }
+  }
+}

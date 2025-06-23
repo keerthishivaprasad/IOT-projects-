@@ -1,4 +1,4 @@
-# 🌐 IoT Projects with Arduino
+# 🌐 IoT Projects with Arduino and similar components
 
 This repository contains a collection of IoT (Internet of Things) projects built using Arduino, sensors, modules, and cloud integration. Each project is designed to solve real-world problems with smart automation, data monitoring, and remote control.
 

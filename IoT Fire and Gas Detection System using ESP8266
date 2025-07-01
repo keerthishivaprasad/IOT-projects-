@@ -1,1 +1,69 @@
+#include <ESP8266WiFi.h>
+#include <ThingSpeak.h>
+
+// Wi-Fi credentials
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+
+// ThingSpeak API Settings
+const char* apiKey = "YOUR_API_KEY";
+const long channelID = YOUR_CHANNEL_ID;
+
+WiFiClient client;
+
+// Pin Definitions
+#define GAS_SENSOR_PIN A0       // MQ2 analog output
+#define FLAME_SENSOR_PIN D2     // Flame sensor digital output
+#define BUZZER_PIN D1           // Buzzer for alert
+
+int gasValue = 0;
+int flameDetected = 0;
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(FLAME_SENSOR_PIN, INPUT);
+  pinMode(BUZZER_PIN, OUTPUT);
+  digitalWrite(BUZZER_PIN, LOW);
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected to WiFi");
+
+  ThingSpeak.begin(client);
+}
+
+void loop() {
+  gasValue = analogRead(GAS_SENSOR_PIN);          // Read gas sensor value
+  flameDetected = digitalRead(FLAME_SENSOR_PIN);  // 0 means flame detected
+
+  Serial.println("=== Sensor Readings ===");
+  Serial.print("Gas Value: "); Serial.println(gasValue);
+  Serial.print("Flame Detected: ");
+  Serial.println(flameDetected == 0 ? "YES" : "NO");
+
+  // Send data to ThingSpeak
+  ThingSpeak.setField(1, gasValue);
+  ThingSpeak.setField(2, flameDetected == 0 ? 1 : 0);
+
+  int response = ThingSpeak.writeFields(channelID, apiKey);
+  if (response == 200) {
+    Serial.println("Data sent to ThingSpeak.");
+  } else {
+    Serial.print("Error: "); Serial.println(response);
+  }
+
+  // Trigger alert
+  if (gasValue > 500 || flameDetected == 0) {
+    digitalWrite(BUZZER_PIN, HIGH);
+    Serial.println("ALERT! Gas or Flame detected!");
+  } else {
+    digitalWrite(BUZZER_PIN, LOW);
+  }
+
+  delay(15000);  // 15-second delay (ThingSpeak rate limit)
+}
 

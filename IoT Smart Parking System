@@ -1,0 +1,62 @@
+#include <ESP8266WiFi.h>
+#include <ThingSpeak.h>
+
+// Wi-Fi Credentials
+const char* ssid = "YOUR_SSID";
+const char* password = "YOUR_PASSWORD";
+
+// ThingSpeak Settings
+const char* apiKey = "YOUR_API_KEY";
+const long channelID = YOUR_CHANNEL_ID;
+WiFiClient client;
+
+// Sensor pins
+#define SLOT1_SENSOR D1
+#define SLOT2_SENSOR D2
+
+// Slot status variables
+int slot1_status = 1;
+int slot2_status = 1;
+
+void setup() {
+  Serial.begin(115200);
+
+  pinMode(SLOT1_SENSOR, INPUT);
+  pinMode(SLOT2_SENSOR, INPUT);
+
+  WiFi.begin(ssid, password);
+  Serial.print("Connecting to WiFi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected to WiFi");
+
+  ThingSpeak.begin(client);
+}
+
+void loop() {
+  slot1_status = digitalRead(SLOT1_SENSOR); // 0 = Occupied, 1 = Free
+  slot2_status = digitalRead(SLOT2_SENSOR);
+
+  int available_slots = (slot1_status == 1) + (slot2_status == 1);
+
+  Serial.println("=== Parking Slot Status ===");
+  Serial.print("Slot 1: "); Serial.println(slot1_status == 1 ? "Free" : "Occupied");
+  Serial.print("Slot 2: "); Serial.println(slot2_status == 1 ? "Free" : "Occupied");
+  Serial.print("Available Slots: "); Serial.println(available_slots);
+
+  ThingSpeak.setField(1, slot1_status);
+  ThingSpeak.setField(2, slot2_status);
+  ThingSpeak.setField(3, available_slots);
+
+  int response = ThingSpeak.writeFields(channelID, apiKey);
+  if (response == 200) {
+    Serial.println("Data updated to ThingSpeak.");
+  } else {
+    Serial.print("Error sending data: "); Serial.println(response);
+  }
+
+  delay(15000); // ThingSpeak minimum delay
+}
+ 

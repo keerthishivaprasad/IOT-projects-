@@ -1,0 +1,70 @@
+#include <ESP8266WiFi.h>
+#include <FirebaseArduino.h>
+
+// Wi-Fi credentials
+#define WIFI_SSID "YOUR_SSID"
+#define WIFI_PASSWORD "YOUR_PASSWORD"
+
+// Firebase credentials
+#define FIREBASE_HOST "your-project-id.firebaseio.com"
+#define FIREBASE_AUTH "YOUR_FIREBASE_DB_SECRET"
+
+#define TRIG_PIN D1
+#define ECHO_PIN D2
+#define LED_PIN D3
+
+long duration;
+int distance;
+int binHeight = 30; // in cm, adjust according to your bin
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+  pinMode(LED_PIN, OUTPUT);
+  digitalWrite(LED_PIN, LOW);
+
+  // Connect to Wi-Fi
+  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
+  Serial.print("Connecting to Wi-Fi");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected to WiFi");
+
+  // Connect to Firebase
+  Firebase.begin(FIREBASE_HOST, FIREBASE_AUTH);
+}
+
+void loop() {
+  // Ultrasonic Sensor Logic
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  duration = pulseIn(ECHO_PIN, HIGH);
+  distance = duration * 0.034 / 2; // distance in cm
+
+  int fillLevel = binHeight - distance; // how full the bin is
+  int fillPercent = map(fillLevel, 0, binHeight, 0, 100);
+
+  Serial.print("Distance: "); Serial.print(distance); Serial.println(" cm");
+  Serial.print("Fill Level: "); Serial.print(fillPercent); Serial.println("%");
+
+  // Send to Firebase
+  Firebase.setInt("TrashBin/FillLevel", fillPercent);
+  Firebase.setBool("TrashBin/Full", fillPercent >= 80);
+
+  // Alert if full
+  if (fillPercent >= 80) {
+    digitalWrite(LED_PIN, HIGH); // Turn on LED
+    Serial.println("ALERT: Trash bin is almost full!");
+  } else {
+    digitalWrite(LED_PIN, LOW);
+  }
+
+  delay(10000); // 10-second delay between readings
+}

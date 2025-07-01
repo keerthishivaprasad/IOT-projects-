@@ -16,7 +16,6 @@ This repository contains a collection of IoT (Internet of Things) projects built
 
 Each project folder contains:
 - 📁 Circuit diagrams
-- 🔋 Bill of Materials
 - 🔌 Arduino Code (.ino files)
 - 📝 Project explanation and setup steps
 

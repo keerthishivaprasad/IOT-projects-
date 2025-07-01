@@ -1,0 +1,22 @@
+#define BLYNK_PRINT Serial
+#include <ESP8266WiFi.h>
+#include <BlynkSimpleEsp8266.h>
+
+// Replace with your Wi-Fi credentials and Blynk auth token
+char auth[] = "Your_Blynk_Auth_Token";
+char ssid[] = "Your_WiFi_SSID";
+char pass[] = "Your_WiFi_Password";
+
+// Define pin connected to relay module
+int relayPin = D1;
+
+void setup() {
+  Serial.begin(9600);
+  Blynk.begin(auth, ssid, pass);
+  pinMode(relayPin, OUTPUT);
+  digitalWrite(relayPin, HIGH); // default OFF (active LOW relay)
+}
+
+void loop() {
+  Blynk.run();
+}

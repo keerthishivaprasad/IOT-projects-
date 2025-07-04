@@ -1,0 +1,59 @@
+import cv2
+import time
+import datetime
+import telegram  # For alerts
+from google.oauth2 import service_account  # For Google Drive upload
+
+# Telegram Bot Config
+BOT_TOKEN = "YOUR_TELEGRAM_BOT_TOKEN"
+CHAT_ID = "YOUR_CHAT_ID"
+bot = telegram.Bot(token=BOT_TOKEN)
+
+# Initialize Camera
+camera = cv2.VideoCapture(0)  # Use 0 for default camera
+
+# Motion Detection Setup
+frame_width = 640
+frame_height = 480
+min_area = 500  # Minimum contour area to trigger motion
+threshold = 25  # Sensitivity (lower = more sensitive)
+
+def send_alert(image_path):
+    """Send photo to Telegram"""
+    with open(image_path, 'rb') as photo:
+        bot.send_photo(chat_id=CHAT_ID, photo=photo, caption="🚨 Motion Detected!")
+
+def upload_to_drive(image_path):
+    """Upload to Google Drive (Optional)"""
+    # Code for Google Drive API (see GitHub for full example)
+    pass
+
+def main():
+    _, frame1 = camera.read()
+    gray1 = cv2.cvtColor(frame1, cv2.COLOR_BGR2GRAY)
+    time.sleep(1)  # Warm-up time
+
+    while True:
+        _, frame2 = camera.read()
+        gray2 = cv2.cvtColor(frame2, cv2.COLOR_BGR2GRAY)
+
+        # Compare frames for motion
+        delta = cv2.absdiff(gray1, gray2)
+        thresh = cv2.threshold(delta, threshold, 255, cv2.THRESH_BINARY)[1]
+        contours, _ = cv2.findContours(thresh, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_SIMPLE)
+
+        for contour in contours:
+            if cv2.contourArea(contour) > min_area:
+                # Motion detected!
+                timestamp = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+                image_path = f"motion_{timestamp}.jpg"
+                cv2.imwrite(image_path, frame2)
+                
+                send_alert(image_path)  # Telegram alert
+                upload_to_drive(image_path)  # Optional cloud backup
+                break
+
+        gray1 = gray2  # Update reference frame
+
+if __name__ == "__main__":
+    main()

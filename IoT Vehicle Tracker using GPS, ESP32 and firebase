@@ -1,0 +1,56 @@
+#include <WiFi.h>
+#include <Firebase_ESP_Client.h>
+#include <TinyGPS++.h>
+#include <HardwareSerial.h>
+
+// WiFi Credentials
+#define WIFI_SSID "YOUR_WIFI_SSID"
+#define WIFI_PASS "YOUR_WIFI_PASSWORD"
+
+// Firebase Config
+#define FIREBASE_HOST "YOUR_FIREBASE_DATABASE_URL"
+#define FIREBASE_KEY "YOUR_FIREBASE_API_KEY"
+
+// GPS Setup
+HardwareSerial SerialGPS(1);  // UART1 (RX=GPIO16, TX=GPIO17)
+TinyGPSPlus gps;
+
+FirebaseData fbdo;
+
+void setup() {
+  Serial.begin(115200);
+  SerialGPS.begin(9600, SERIAL_8N1, 16, 17);  // GPS UART
+
+  // Connect to WiFi
+  WiFi.begin(WIFI_SSID, WIFI_PASS);
+  Serial.print("Connecting to WiFi...");
+  while (WiFi.status() != WL_CONNECTED) {
+    delay(500);
+    Serial.print(".");
+  }
+  Serial.println("\nConnected! IP: " + WiFi.localIP());
+
+  // Initialize Firebase
+  Firebase.begin(FIREBASE_HOST, FIREBASE_KEY);
+}
+
+void loop() {
+  while (SerialGPS.available() > 0) {
+    if (gps.encode(SerialGPS.read())) {
+      if (gps.location.isValid()) {
+        float latitude = gps.location.lat();
+        float longitude = gps.location.lng();
+
+        // Send to Firebase
+        Firebase.RTDB.setFloat(&fbdo, "vehicles/car1/lat", latitude);
+        Firebase.RTDB.setFloat(&fbdo, "vehicles/car1/lng", longitude);
+
+        Serial.print("Location Updated: ");
+        Serial.print(latitude, 6);
+        Serial.print(", ");
+        Serial.println(longitude, 6);
+      }
+    }
+  }
+  delay(5000);  // Update every 5 seconds
+}

@@ -1,0 +1,28 @@
+#include <wiringPi.h>
+#include <curl/curl.h>
+#include <iostream>
+
+const int LDR_PIN = 0;    // Light sensor
+const int RELAY_PIN = 1;   // Light control
+
+void controlLights(int lightLevel) {
+    if(lightLevel < 300) {  // Threshold for darkness
+        digitalWrite(RELAY_PIN, HIGH);
+        std::cout << "Lights ON" << std::endl;
+    } else {
+        digitalWrite(RELAY_PIN, LOW);
+        std::cout << "Lights OFF" << std::endl;
+    }
+}
+
+int main() {
+    wiringPiSetup();
+    pinMode(LDR_PIN, INPUT);
+    pinMode(RELAY_PIN, OUTPUT);
+
+    while(true) {
+        int lightLevel = analogRead(LDR_PIN);
+        controlLights(lightLevel);
+        delay(5000);  // Check every 5 seconds
+    }
+}

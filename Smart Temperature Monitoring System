@@ -1,0 +1,39 @@
+#include <iostream>
+#include <fstream>
+#include <chrono>
+#include <thread>
+#include <string>
+
+// Simulated temperature sensor reading
+float readTemperature() {
+    // In a real project, this would read from an actual sensor
+    return 20.0 + (rand() % 100) / 10.0; // Random temp between 20-30°C
+}
+
+void sendToCloud(float temp) {
+    // Simulate sending data to cloud
+    std::cout << "Uploading temperature: " << temp << "°C to cloud..." << std::endl;
+}
+
+int main() {
+    while(true) {
+        float temp = readTemperature();
+        std::cout << "Current temperature: " << temp << "°C" << std::endl;
+        
+        if(temp > 28.0) {
+            std::cout << "WARNING: Temperature too high!" << std::endl;
+        }
+        
+        sendToCloud(temp);
+        
+        // Log to local file
+        std::ofstream logfile("temp_log.txt", std::ios::app);
+        auto now = std::chrono::system_clock::now();
+        std::time_t now_time = std::chrono::system_clock::to_time_t(now);
+        logfile << std::ctime(&now_time) << " - " << temp << "°C\n";
+        logfile.close();
+        
+        std::this_thread::sleep_for(std::chrono::seconds(5));
+    }
+    return 0;
+}

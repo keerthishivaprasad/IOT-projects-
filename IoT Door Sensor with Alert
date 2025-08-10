@@ -1,0 +1,52 @@
+#include <iostream>
+#include <curl/curl.h>
+#include <unistd.h>
+
+// Simulated door sensor (1=open, 0=closed)
+bool isDoorOpen() {
+    return rand() % 2; // Random state for simulation
+}
+
+void sendAlert(const std::string& message) {
+    CURL *curl;
+    CURLcode res;
+    
+    curl_global_init(CURL_GLOBAL_DEFAULT);
+    curl = curl_easy_init();
+    
+    if(curl) {
+        // In a real project, replace with your webhook URL
+        curl_easy_setopt(curl, CURLOPT_URL, "https://api.example.com/alert");
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, message.c_str());
+        
+        res = curl_easy_perform(curl);
+        if(res != CURLE_OK) {
+            std::cerr << "Failed to send alert: " << curl_easy_strerror(res) << std::endl;
+        }
+        
+        curl_easy_cleanup(curl);
+    }
+    curl_global_cleanup();
+}
+
+int main() {
+    bool lastState = false;
+    
+    while(true) {
+        bool currentState = isDoorOpen();
+        
+        if(currentState != lastState) {
+            if(currentState) {
+                std::cout << "Door opened!" << std::endl;
+                sendAlert("Door opened at home!");
+            } else {
+                std::cout << "Door closed." << std::endl;
+            }
+            lastState = currentState;
+        }
+        
+        sleep(1); // Check every second
+    }
+    
+    return 0;
+}
